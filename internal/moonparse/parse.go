@@ -59,7 +59,7 @@ func ParseMoons(input string) (MoonProducts, error) {
 		}
 
 		// Detect moon name
-		if m := moonLineRe.FindStringSubmatch(line); m != nil {
+		if m := moonLineRe.FindStringSubmatch(line); len(m) == 2 {
 			currentMoon = m[1]
 			if _, ok := result[currentMoon]; !ok {
 				result[currentMoon] = make(map[string]MoonProductData)
@@ -71,7 +71,7 @@ func ParseMoons(input string) (MoonProducts, error) {
 		}
 
 		// Detect product rows
-		if m := productLineRe.FindStringSubmatch(line); m != nil {
+		if m := productLineRe.FindStringSubmatch(line); len(m) == 7 {
 			product := m[1]
 			result[currentMoon][product] = MoonProductData{
 				Quantity:      m[2],
