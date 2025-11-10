@@ -1,9 +1,12 @@
 name: Build GooSniffer Release
 
 on:
-  push:
-    tags:
-      - 'v*'    # e.g. v1.0.0, v0.1.2
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   build-and-release:
