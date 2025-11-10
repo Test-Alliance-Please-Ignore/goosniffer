@@ -30,8 +30,8 @@ func main() {
 	parser := flags.NewParser(&opts, flags.Default)
 	if _, err := parser.Parse(); err != nil {
 		// If user asked for help, just exit quietly.
-		var ferr *flags.Error
-		if errors.As(err, &ferr) && errors.Is(ferr.Type, flags.ErrHelp) {
+		var fErr *flags.Error
+		if errors.As(err, &fErr) && errors.Is(fErr.Type, flags.ErrHelp) {
 			return
 		}
 		log.Fatalf("failed to parse flags: %v", err)
@@ -43,16 +43,19 @@ func main() {
 
 	log.Println("Listening for clipboard text. Press Ctrl+C to exit.")
 
-	err := clipboardwatcher.Watch(func(text string) {
+	watchErr := clipboardwatcher.Watch(func(text string) {
 		log.Println("Clipboard changed")
 
 		if looksLikeMoonScan(text) {
 			log.Println("Possible moon scan data detected")
-			data, err := moonparse.ParseMoons(text)
+			data, parseErr := moonparse.ParseMoons(text)
+			if parseErr != nil {
+				log.Fatalf("failed to parse moons: %v", parseErr)
+			}
 
-			payload, err := json.Marshal(data)
-			if err != nil {
-				log.Printf("Failed to marshal moon scan data: %v", err)
+			payload, jsErr := json.Marshal(data)
+			if jsErr != nil {
+				log.Printf("Failed to marshal moon scan data: %v", jsErr)
 				return
 			}
 			log.Println("Moon scan parsed:")
@@ -60,21 +63,23 @@ func main() {
 			j, _ := json.MarshalIndent(data, "", "  ")
 			fmt.Println(string(j))
 
-			if (opts.APIToken != "") && (opts.APIEndpoint != "") {
+			if opts.APIEndpoint != "" {
 				log.Println("Uploading data")
 
-				req, err := http.NewRequest("POST", opts.APIEndpoint, bytes.NewReader(payload))
-				if err != nil {
-					log.Printf("Failed to create POST request: %v", err)
+				req, reqErr := http.NewRequest("POST", opts.APIEndpoint, bytes.NewReader(payload))
+				if reqErr != nil {
+					log.Printf("Failed to create POST request: %v", reqErr)
 					return
 				}
 				req.Header.Set("Content-Type", "application/json")
-				req.Header.Set("Authorization", "Bearer "+opts.APIToken)
 
-				// Send it.
-				resp, err := httpClient.Do(req)
-				if err != nil {
-					log.Printf("POST %s failed: %v", opts.APIEndpoint, err)
+				if opts.APIToken != "" {
+					req.Header.Set("Authorization", "Bearer "+opts.APIToken)
+				}
+
+				resp, httpErr := httpClient.Do(req)
+				if httpErr != nil {
+					log.Printf("POST %s failed: %v", opts.APIEndpoint, httpErr)
 					return
 				}
 				defer resp.Body.Close()
@@ -88,8 +93,8 @@ func main() {
 		}
 	})
 
-	if err != nil {
-		log.Fatal(err)
+	if watchErr != nil {
+		log.Fatal(watchErr)
 	}
 }
 
